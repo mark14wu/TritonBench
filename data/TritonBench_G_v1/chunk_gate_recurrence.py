@@ -30,13 +30,13 @@ def _fwd_recurrence(
     O += D_MODEL_K * D_MODEL_V
     d = d + offset_bh * NUM_BLOCK
     for i in range(NUM_BLOCK-1):
-        d_i = tl.load(d)
-        S_i = tl.load(S) 
+        d_i = tl.load(d + i)
+        S_i = tl.load(S + D_MODEL_K * D_MODEL_V * i)
         acc = acc * d_i + S_i
-        tl.store(O, acc.to(O.dtype.element_ty))
-        d += 1
-        S += D_MODEL_K * D_MODEL_V
-        O += D_MODEL_K * D_MODEL_V
+        tl.store(O + D_MODEL_K * D_MODEL_V * i, acc.to(O.dtype.element_ty))
+        # d += 1
+        # S += D_MODEL_K * D_MODEL_V
+        # O += D_MODEL_K * D_MODEL_V
      
 
 ## NUM_SPLIT_K/V. K/V dimension split into NUM_SPLIT_K/V parts with equal size BLOCK_MODEL
@@ -72,20 +72,20 @@ def _bwd_recurrence(
 
     # ignore the first chunk
     for i in range(NUM_BLOCK - 1):
-        S_i = tl.load(S)
-        DS_i = tl.load(DS)
-        d_i = tl.load(d)
+        S_i = tl.load(S - D_MODEL_K * D_MODEL_V * i)
+        DS_i = tl.load(DS - D_MODEL_K * D_MODEL_V * i)
+        d_i = tl.load(d - i)
         Dacc = Dacc * d_i + DS_i
         DG_i = tl.sum(Dacc * S_i.to(tl.float32))
 
-        tl.store(DG, DG_i.to(DG.dtype.element_ty))
-        tl.store(DI, Dacc.to(DI.dtype.element_ty))    
+        tl.store(DG - NUM_K * NUM_V * i, DG_i.to(DG.dtype.element_ty))
+        tl.store(DI - D_MODEL_K * D_MODEL_V * i, Dacc.to(DI.dtype.element_ty))
 
-        S -= D_MODEL_K * D_MODEL_V
-        DI -= D_MODEL_K * D_MODEL_V 
-        DS -= D_MODEL_K * D_MODEL_V
-        DG -= NUM_K * NUM_V
-        d -= 1
+        # S -= D_MODEL_K * D_MODEL_V
+        # DI -= D_MODEL_K * D_MODEL_V
+        # DS -= D_MODEL_K * D_MODEL_V
+        # DG -= NUM_K * NUM_V
+        # d -= 1
     
     DL = DL + offset_bh * D_MODEL_K * D_MODEL_V + offset_d * D_MODEL_V * BLOCK_MODEL_K  +  tl.arange(0, BLOCK_MODEL_K)[:, None] * D_MODEL_V + offset_s * BLOCK_MODEL_V + tl.arange(0, BLOCK_MODEL_V)[None, :]
     DS_i = tl.load(DS)
