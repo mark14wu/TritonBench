@@ -204,7 +204,12 @@ def test_destindex_copy_quantize_kv():
 
     # Create random input tensors
     K = torch.randn((seq_len, head_num, head_dim), dtype=torch.float32, device='cuda')
-    DestLoc = torch.randint(0, seq_len, (seq_len,), dtype=torch.int32, device='cuda')
+    # destination slots must be UNIQUE: the kernel scatter-stores one row
+    # per program through DestLoc, so duplicate destinations make two
+    # programs write the same Out/Out_scale rows concurrently (a data race
+    # with nondeterministic results). randperm models real KV-cache slot
+    # allocation, where a slot is assigned to at most one token.
+    DestLoc = torch.randperm(seq_len, dtype=torch.int32, device='cuda')
     Out = torch.empty_like(K, dtype=torch.int8)
     Out_scale = torch.empty((seq_len, head_num, head_dim // quant_group_dim), dtype=torch.float32, device='cuda')
 
@@ -218,7 +223,7 @@ def test_destindex_copy_quantize_kv():
     # Case 2: Handle a small batch size, less than group_size
     batch_size_small = 1
     K_small = torch.randn((batch_size_small, head_num, head_dim), dtype=torch.float32, device='cuda')
-    DestLoc_small = torch.randint(0, seq_len, (batch_size_small,), dtype=torch.int32, device='cuda')
+    DestLoc_small = torch.randperm(seq_len, dtype=torch.int32, device='cuda')[:batch_size_small]
     Out_small = torch.empty_like(K_small, dtype=torch.int8)
     Out_scale_small = torch.empty((batch_size_small, head_num, head_dim // quant_group_dim), dtype=torch.float32, device='cuda')
 
@@ -229,7 +234,7 @@ def test_destindex_copy_quantize_kv():
     }
 
     # Case 3: Modify DestLoc to contain different sequence lengths
-    DestLoc_varied = torch.randint(0, seq_len, (seq_len // 2,), dtype=torch.int32, device='cuda')
+    DestLoc_varied = torch.randperm(seq_len, dtype=torch.int32, device='cuda')[:seq_len // 2]
     Out_varied = torch.empty_like(K, dtype=torch.int8)
     Out_scale_varied = torch.empty((seq_len // 2, head_num, head_dim // quant_group_dim), dtype=torch.float32, device='cuda')
 
