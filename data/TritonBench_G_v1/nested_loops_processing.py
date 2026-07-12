@@ -38,7 +38,12 @@ def nested3(in_ptr, out_ptr, stride_m, stride_n):
 def wrapper_nested3(n_rows, n_cols):
     x = torch.arange(0, n_rows * n_cols, device="cuda", dtype=torch.int32).reshape([n_rows, n_cols])
     output = torch.zeros([n_rows, n_cols], device=x.device, dtype=x.dtype)
-    grid = lambda meta: (n_cols // 4,)
+    # nested3 never reads tl.program_id, so every program instance writes
+    # the exact same out_ptr addresses: any grid larger than (1,) makes the
+    # launch an unsynchronized multi-writer race on out_ptr. One program
+    # already produces the full output; keep the degenerate n_cols < 4 case
+    # (empty grid) unchanged.
+    grid = lambda meta: (min(n_cols // 4, 1),)
     nested3[grid](x, output, x.stride(0), x.stride(1))
     print(output)
 
