@@ -193,7 +193,7 @@ def test_context_attention_fwd_ppl_int8kv():
     v = kv[:, H:]
     o = torch.empty((Z * (N_CTX - prompt_cache_len), H, D_HEAD), dtype=dtype, device="cuda").normal_(mean=0.3, std=0.2)
     max_input_len = N_CTX
-    b_start_loc = torch.zeros((Z,), dtype=torch.int32, device="cuda")
+    b_start_loc = torch.arange(Z, dtype=torch.int32, device="cuda") * (N_CTX - prompt_cache_len)
     b_seq_len = torch.ones((Z,), dtype=torch.int32, device="cuda")
     b_prompt_cache_len = torch.zeros(Z, dtype=torch.int32, device="cuda")
 
@@ -222,7 +222,7 @@ def test_context_attention_fwd_ppl_int8kv():
     k = kv[:, :H]
     v = kv[:, H:]
     o = torch.empty((Z * (N_CTX - prompt_cache_len), H, D_HEAD), dtype=dtype, device="cuda").normal_(mean=0.3, std=0.2)
-    b_start_loc = torch.zeros((Z,), dtype=torch.int32, device="cuda")
+    b_start_loc = torch.arange(Z, dtype=torch.int32, device="cuda") * (N_CTX - prompt_cache_len)
     b_seq_len = torch.ones((Z,), dtype=torch.int32, device="cuda")
     b_prompt_cache_len = torch.zeros(Z, dtype=torch.int32, device="cuda")
     context_attention_fwd_ppl_int8kv(q, k, v, o, b_start_loc, b_seq_len, max_input_len, b_prompt_cache_len)
