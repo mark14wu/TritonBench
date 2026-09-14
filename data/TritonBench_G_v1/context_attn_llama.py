@@ -191,11 +191,15 @@ def test_context_attention_fwd():
     v = torch.empty((Z * N_CTX, H, D_HEAD), dtype=dtype, device="cuda").normal_(mean=0.3, std=0.2)
     o = torch.empty((Z * (N_CTX - prompt_cache_len), H, D_HEAD), dtype=dtype, device="cuda").normal_(mean=0.3, std=0.2)
 
-    req_to_token_indexs = torch.empty((1000, N_CTX + 7000), dtype=torch.int32, device="cuda")
+    req_to_token_indexs = torch.zeros((1000, N_CTX + 7000), dtype=torch.int32, device="cuda")
+    req_to_token_indexs[:Z, :N_CTX] = (
+        torch.arange(Z, dtype=torch.int32, device="cuda")[:, None] * N_CTX
+        + torch.arange(N_CTX, dtype=torch.int32, device="cuda")[None, :]
+    )
     max_input_len = N_CTX
-    b_start_loc = torch.zeros((Z,), dtype=torch.int32, device="cuda")
+    b_start_loc = torch.arange(Z, dtype=torch.int32, device="cuda") * (N_CTX - prompt_cache_len)
     b_seq_len = torch.ones((Z,), dtype=torch.int32, device="cuda")
-    b_req_idx = torch.ones((Z,), dtype=torch.int32, device="cuda")
+    b_req_idx = torch.arange(Z, dtype=torch.int32, device="cuda")
     b_prompt_cache_len = torch.zeros(Z, dtype=torch.int32, device="cuda")
 
     results = {}
