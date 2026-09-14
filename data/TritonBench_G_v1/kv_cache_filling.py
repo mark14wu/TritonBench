@@ -423,16 +423,18 @@ def test_fill_kv_cache():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    num_blocks = max_q_seq_length // block_size + 1
+    num_pages = batch_size * num_blocks
     k_states = torch.rand((batch_size, max_q_seq_length, num_heads, head_dim), dtype=torch.float32).to(device)
     v_states = torch.rand((batch_size, max_q_seq_length, num_heads, head_dim_v), dtype=torch.float32).to(device)
-    k_caches = torch.zeros((batch_size, block_size, num_heads, head_dim), dtype=torch.uint8).to(device)
-    v_caches = torch.zeros((batch_size, block_size, num_heads, head_dim_v), dtype=torch.uint8).to(device)
-    q_start_loc = torch.zeros(batch_size, dtype=torch.int32).to(device)
+    k_caches = torch.zeros((num_pages, block_size, num_heads, head_dim), dtype=torch.uint8).to(device)
+    v_caches = torch.zeros((num_pages, block_size, num_heads, head_dim_v), dtype=torch.uint8).to(device)
+    q_start_loc = (torch.arange(batch_size, dtype=torch.int32) * max_q_seq_length).to(device)
     q_seq_length = torch.full((batch_size,), max_q_seq_length, dtype=torch.int32).to(device)
     kv_seq_length = torch.full((batch_size,), max_q_seq_length, dtype=torch.int32).to(device)
-    block_offsets = torch.zeros((batch_size, max_q_seq_length // block_size + 1), dtype=torch.int32).to(device)
-    k_scales_zeros = torch.zeros((batch_size, block_size, num_heads, 2), dtype=torch.float32).to(device)
-    v_scales_zeros = torch.zeros((batch_size, block_size, num_heads, 2), dtype=torch.float32).to(device)
+    block_offsets = torch.arange(num_pages, dtype=torch.int32).view(batch_size, num_blocks).to(device)
+    k_scales_zeros = torch.zeros((num_pages, block_size, num_heads, 2), dtype=torch.float32).to(device)
+    v_scales_zeros = torch.zeros((num_pages, block_size, num_heads, 2), dtype=torch.float32).to(device)
 
     results = {}
 
