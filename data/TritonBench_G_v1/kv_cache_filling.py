@@ -429,6 +429,8 @@ def test_fill_kv_cache():
     v_states = torch.rand((batch_size, max_q_seq_length, num_heads, head_dim_v), dtype=torch.float32).to(device)
     k_caches = torch.zeros((num_pages, block_size, num_heads, head_dim), dtype=torch.uint8).to(device)
     v_caches = torch.zeros((num_pages, block_size, num_heads, head_dim_v), dtype=torch.uint8).to(device)
+    k_caches_int4 = torch.zeros((num_pages, block_size, num_heads, head_dim // 2), dtype=torch.uint8).to(device)
+    v_caches_int4 = torch.zeros((num_pages, block_size, num_heads, head_dim_v // 2), dtype=torch.uint8).to(device)
     q_start_loc = (torch.arange(batch_size, dtype=torch.int32) * max_q_seq_length).to(device)
     q_seq_length = torch.full((batch_size,), max_q_seq_length, dtype=torch.int32).to(device)
     kv_seq_length = torch.full((batch_size,), max_q_seq_length, dtype=torch.int32).to(device)
@@ -457,8 +459,8 @@ def test_fill_kv_cache():
     fill_kv_cache(
         k_states,
         v_states,
-        k_caches,
-        v_caches,
+        k_caches_int4,
+        v_caches_int4,
         q_start_loc,
         q_seq_length,
         kv_seq_length,
@@ -468,7 +470,7 @@ def test_fill_kv_cache():
         v_scales_zeros,
         quant_policy=4
     )
-    results['test_case_2'] = (k_caches.clone(), v_caches.clone())
+    results['test_case_2'] = (k_caches_int4.clone(), v_caches_int4.clone())
 
     # Test for quant_policy = 8 (int8 quantization)
     fill_kv_cache(
